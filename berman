@@ -1,0 +1,70 @@
+
+####data####
+https://sheet.zoho.com/sheet/officeapi/v1/92bd612c1d581d9d0bfeb2390f73f7cc6659d38bcd134d25ce2bdb8e1398ecb2a95c027a8928727f7526b5f5e326090b7418877fe21192ac332e8f99375ae423
+
+
+
+######data main= ANOVA_Rstudio
+
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(ggplot2)
+
+
+
+ANOVA_Rstudio <- ANOVA_Rstudio %>%
+  gather(key = "Section", value = "GRF", t1, t2, t3) %>%
+  convert_as_factor(id, Section)
+
+
+ANOVA_Rstudio %>%
+  group_by(Section) %>%
+  get_summary_stats(GRF, type = "mean_sd")
+  
+  ##ggboxplot####
+
+bxp <- ggboxplot(ANOVA_Rstudio, x = "Section", y = "GRF",
+  color = "Section", palette = "jco", add="point")
+  bxp
+                           ##################################ISSUE FOR BOXPLOTS##################################
+ ######ISSUE 1######### 
+ stat.test <- ANOVA_Rstudio>%
+  group_by(GRF) %>%
+  pairwise_t_test(
+    GRF ~ Section, paired = TRUE, 
+    p.adjust.method = "bonferroni"
+  ) %>%
+  select(-df, -statistic, -p) # Remove details
+stat.test
+
+
+stat.test <- stat.test %>% add_xy_position(x = "GRF")
+bxp + stat_pvalue_manual(
+  stat.test, label = "p.adj.signif", 
+  step.increase = 0.08
+)
+#####ISSUE 2###################
+bxp + stat_pvalue_manual(stat.test, label = "p.adj.signif", step.increase = 0.08)
+
+
+
+CONSUMPTİON
+  
+  res.aov <- anova_test(data = ANOVA_Rstudio, dv = GRF, wid = id, within = Section)
+get_anova_table(res.aov)
+
+#############The GRF  was statistically significantly different at the different time points duringt exercise, 
+F(1.55, 29.47) = 11.476, p < 0.0001, eta2[g] = 0.021.
+
+###posthoc##
+pwc <- ANOVA_Rstudio %>%
+  pairwise_t_test(
+    GRF ~Section, paired = TRUE,
+     p.adjust.method = "none")
+pwc
+########REPORT
+pwc <- pwc %>% add_xy_position(x = "Section")
+bxp + stat_pvalue_manual(pwc) + labs(subtitle = get_test_label(res.aov, detailed = TRUE),
+                                     caption = get_pwc_label(pwc))
+
